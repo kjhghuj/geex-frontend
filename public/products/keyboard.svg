@@ -1,0 +1,10 @@
+﻿<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 1000">
+  <rect width="800" height="1000" fill="#F8FBFD"/>
+  <rect x="105" y="390" width="590" height="220" rx="20" fill="#FFFFFF" stroke="#DCE6EC" stroke-width="4"/>
+  <g fill="#050607">
+    <rect x="155" y="435" width="58" height="40"/><rect x="230" y="435" width="58" height="40"/><rect x="305" y="435" width="58" height="40"/><rect x="380" y="435" width="58" height="40"/><rect x="455" y="435" width="58" height="40"/><rect x="530" y="435" width="58" height="40"/>
+    <rect x="175" y="500" width="70" height="40"/><rect x="265" y="500" width="70" height="40"/><rect x="355" y="500" width="70" height="40"/><rect x="445" y="500" width="70" height="40"/><rect x="535" y="500" width="70" height="40"/>
+  </g>
+  <path d="M210 650h380" stroke="#82C8DE" stroke-width="10"/>
+  <text x="400" y="735" text-anchor="middle" font-family="Arial, sans-serif" font-size="32" font-weight="800" fill="#050607">KEYBOARD GEAR</text>
+</svg>

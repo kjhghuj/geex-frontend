@@ -1,0 +1,7 @@
+﻿<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 1000">
+  <rect width="800" height="1000" fill="#F8FBFD"/>
+  <path d="M170 530c125-195 335-195 460 0" fill="none" stroke="#82C8DE" stroke-width="34"/>
+  <path d="M250 610h300" stroke="#050607" stroke-width="28"/>
+  <circle cx="400" cy="515" r="54" fill="#050607"/>
+  <text x="400" y="740" text-anchor="middle" font-family="Arial, sans-serif" font-size="42" font-weight="800" fill="#050607">GEEX</text>
+</svg>

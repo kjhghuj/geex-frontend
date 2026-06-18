@@ -1,0 +1,7 @@
+﻿<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 1000">
+  <rect width="800" height="1000" fill="#F8FBFD"/>
+  <rect x="310" y="300" width="180" height="300" rx="90" fill="#FFFFFF" stroke="#DCE6EC" stroke-width="5"/>
+  <path d="M400 330v95" stroke="#82C8DE" stroke-width="10"/>
+  <path d="M265 665h270" stroke="#050607" stroke-width="20"/>
+  <text x="400" y="760" text-anchor="middle" font-family="Arial, sans-serif" font-size="32" font-weight="800" fill="#050607">MOUSE GEAR</text>
+</svg>

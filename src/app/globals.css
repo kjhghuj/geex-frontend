@@ -1,0 +1,234 @@
+@import "tailwindcss";
+@plugin "@tailwindcss/typography";
+
+/* GEEX Brand Colors & Theme */
+@theme inline {
+  --color-cool-white: #F8FBFD;
+  --color-near-black: #050607;
+  --color-ink-muted: #5E6872;
+  --color-orbit-blue: #82C8DE;
+  --color-blue-hover: #48AFCF;
+  --color-line-gray: #DCE6EC;
+  --color-panel: #FFFFFF;
+  --color-ice-gray: #EEF5F8;
+  --color-border: var(--color-line-gray);
+
+  /* Semantic Colors */
+  --color-background: var(--color-cool-white);
+  --color-foreground: var(--color-near-black);
+
+  --font-sans: var(--font-geex-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-serif: var(--font-geex-display), var(--font-geex-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-geex-display), var(--font-geex-sans), ui-sans-serif, system-ui, sans-serif;
+}
+
+:root {
+  --background: #F8FBFD;
+  --foreground: #050607;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+.article-content {
+  @apply font-sans text-ink-muted text-base md:text-lg leading-[1.8];
+}
+
+.font-display {
+  font-family: var(--font-geex-display), var(--font-geex-sans), ui-sans-serif, system-ui, sans-serif !important;
+}
+
+.geex-headline {
+  font-family: var(--font-geex-display), var(--font-geex-sans), ui-sans-serif, system-ui, sans-serif;
+  font-weight: 900;
+  font-variation-settings: "wdth" 112;
+  letter-spacing: 0.015em;
+  text-transform: uppercase;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+.brand-type,
+.font-black.uppercase,
+.font-bold.uppercase,
+.font-extrabold.uppercase,
+button[class*="uppercase"],
+a[class*="uppercase"] {
+  font-family: var(--font-geex-display), var(--font-geex-sans), ui-sans-serif, system-ui, sans-serif !important;
+}
+
+/* Headings */
+.article-content h1,
+.article-content h2,
+.article-content h3,
+.article-content h4,
+.article-content h5,
+.article-content h6 {
+  @apply font-serif text-near-black mt-10 mb-6 font-normal;
+}
+
+.article-content h2 {
+  @apply text-2xl md:text-3xl;
+}
+
+.article-content h3 {
+  @apply text-xl md:text-2xl;
+}
+
+/* Paragraphs - Enforce spacing */
+.article-content p {
+  @apply mb-8;
+}
+
+/* Drop Cap for first paragraph */
+.article-content>p:first-of-type::first-letter {
+  @apply float-left mr-3 text-6xl font-serif text-orbit-blue leading-[0.8] pt-2;
+}
+
+/* Blockquotes */
+.article-content blockquote {
+  @apply my-10 p-8 bg-ice-gray border-l-4 border-orbit-blue rounded-r-sm not-italic;
+}
+
+.article-content blockquote p {
+  @apply font-serif text-2xl md:text-3xl italic text-near-black leading-snug mb-0;
+}
+
+/* Images */
+.article-content img {
+  @apply w-full my-8 rounded-sm shadow-sm;
+}
+
+.article-content figure {
+  @apply my-8 block;
+}
+
+.article-content figure img {
+  @apply my-0;
+}
+
+.article-content figcaption {
+  @apply text-sm text-center text-ink-muted mt-2 font-sans;
+}
+
+/* Links */
+.article-content a {
+  @apply text-orbit-blue no-underline border-b border-transparent transition-colors;
+}
+
+.article-content a:hover {
+  @apply border-orbit-blue;
+}
+
+/* Lists */
+.article-content ul {
+  @apply list-disc list-inside space-y-2 mb-8 ml-4;
+}
+
+.article-content ol {
+  @apply list-decimal list-inside space-y-2 mb-8 ml-4;
+}
+
+.article-content li {
+  @apply text-lg text-ink-muted font-light;
+}
+
+/* Strong/Bold */
+.article-content strong,
+.article-content b {
+  @apply font-semibold text-near-black;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--color-cool-white);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-ink-muted);
+}
+
+/* Hide scrollbar for horizontal scroll areas */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Animation utilities */
+@keyframes fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in {
+  animation: fade-in 0.6s ease-out forwards;
+}
+
+@keyframes fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in-up {
+  animation: fade-in-up 0.8s ease-out forwards;
+}
+
+@keyframes marquee {
+  0% {
+    transform: translateX(0);
+  }
+
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+.animate-marquee {
+  display: flex;
+  width: fit-content;
+  animation: marquee 20s linear infinite;
+}
+
+/* Pause animation on hover for better readability */
+.animate-marquee:hover {
+  animation-play-state: paused;
+}

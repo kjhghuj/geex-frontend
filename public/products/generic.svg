@@ -1,0 +1,8 @@
+﻿<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 1000">
+  <rect width="800" height="1000" fill="#F8FBFD"/>
+  <rect x="110" y="360" width="580" height="280" rx="18" fill="#FFFFFF" stroke="#DCE6EC" stroke-width="4"/>
+  <path d="M185 520h430" stroke="#82C8DE" stroke-width="16" stroke-linecap="square"/>
+  <path d="M225 460h350M225 575h350" stroke="#050607" stroke-width="18" stroke-linecap="square"/>
+  <text x="400" y="740" text-anchor="middle" font-family="Arial, sans-serif" font-size="42" font-weight="800" fill="#050607">GEEX</text>
+  <text x="400" y="792" text-anchor="middle" font-family="Arial, sans-serif" font-size="18" letter-spacing="4" fill="#5E6872">ELECTRONICS</text>
+</svg>

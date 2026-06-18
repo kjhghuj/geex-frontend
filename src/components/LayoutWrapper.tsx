@@ -1,0 +1,43 @@
+"use client";
+
+import { useState } from "react";
+import { Navbar, Footer, SearchOverlay, AnnouncementBar } from "@/components";
+import { useCart, useRegion } from "@/lib/providers";
+
+interface LayoutWrapperProps {
+  children: React.ReactNode;
+}
+
+export default function LayoutWrapper({ children }: LayoutWrapperProps) {
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [navOffset, setNavOffset] = useState(40);
+  const { cartCount } = useCart();
+  const { region } = useRegion();
+
+  return (
+    <>
+      <AnnouncementBar onHeightChange={setNavOffset} />
+      <Navbar
+        cartCount={cartCount}
+        onSearchClick={() => setIsSearchOpen(true)}
+        topOffset={navOffset}
+      />
+      <SearchOverlay
+        isOpen={isSearchOpen}
+        onClose={() => setIsSearchOpen(false)}
+        regionId={region?.id}
+      />
+      <main
+        className="flex-grow transition-[padding]"
+        style={{
+          paddingTop: `${navOffset}px`,
+          // @ts-ignore - Custom CSS variable
+          "--announcement-height": `${navOffset}px`
+        }}
+      >
+        {children}
+      </main>
+      <Footer />
+    </>
+  );
+}
