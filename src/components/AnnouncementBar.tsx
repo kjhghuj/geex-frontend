@@ -10,6 +10,8 @@ import { brandFontStyle } from "@/lib/brand-style";
 interface AnnouncementBarConfig {
     enabled: boolean;
     message: string;
+    message_zh?: string;
+    messages?: Record<string, string | undefined>;
     link: string;
 }
 
@@ -21,8 +23,10 @@ export default function AnnouncementBar({ onHeightChange }: { onHeightChange?: (
     const [config, setConfig] = useState<AnnouncementBarConfig | null>({
         enabled: true,
         message: "FREE SHIPPING WORLDWIDE ON ORDERS OVER $79",
+        message_zh: "满 $79 全球免费配送",
         link: "/shipping",
     });
+    const [locale, setLocale] = useState("en");
     const [isVisible, setIsVisible] = useState(true);
     const [isLoading, setIsLoading] = useState(true);
     const [isOverflowing, setIsOverflowing] = useState(false);
@@ -30,6 +34,30 @@ export default function AnnouncementBar({ onHeightChange }: { onHeightChange?: (
     const barRef = useRef<HTMLDivElement>(null);
     const textRef = useRef<HTMLSpanElement>(null);
     const containerRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        const paramsLocale = new URLSearchParams(window.location.search).get("locale");
+        const cookieLocale = document.cookie
+            .split(";")
+            .map((part) => part.trim())
+            .find((part) => part.startsWith("NEXT_LOCALE=") || part.startsWith("locale="))
+            ?.split("=")[1];
+        const storedLocale =
+            window.localStorage.getItem("geex_locale") ||
+            window.localStorage.getItem("NEXT_LOCALE") ||
+            window.localStorage.getItem("locale") ||
+            window.localStorage.getItem("language");
+        const detectedLocale =
+            paramsLocale ||
+            (cookieLocale ? decodeURIComponent(cookieLocale) : undefined) ||
+            storedLocale ||
+            document.documentElement.lang ||
+            navigator.languages?.[0] ||
+            navigator.language ||
+            "en";
+
+        setLocale(detectedLocale);
+    }, []);
 
     useEffect(() => {
         async function fetchConfig() {
@@ -51,6 +79,17 @@ export default function AnnouncementBar({ onHeightChange }: { onHeightChange?: (
         fetchConfig();
     }, []);
 
+    const isChineseLocale = locale.toLowerCase().startsWith("zh");
+    const message =
+        (isChineseLocale &&
+            (config?.messages?.[locale] ||
+                config?.messages?.[locale.toLowerCase()] ||
+                config?.messages?.["zh-CN"] ||
+                config?.messages?.["zh-cn"] ||
+                config?.messages?.zh ||
+                config?.message_zh)) ||
+        config?.message;
+
     // Check for text overflow - Improved logic
     useEffect(() => {
         const checkOverflow = () => {
@@ -62,7 +101,7 @@ export default function AnnouncementBar({ onHeightChange }: { onHeightChange?: (
             }
         };
 
-        if (config && isVisible) {
+        if (message && isVisible) {
             // Check immediately and after a short delay for font loading
             checkOverflow();
             const timer = setTimeout(checkOverflow, 200);
@@ -72,7 +111,7 @@ export default function AnnouncementBar({ onHeightChange }: { onHeightChange?: (
                 window.removeEventListener('resize', checkOverflow);
             };
         }
-    }, [config, isVisible]);
+    }, [message, isVisible]);
 
     // Measure height and report changes
     useEffect(() => {
@@ -99,14 +138,14 @@ export default function AnnouncementBar({ onHeightChange }: { onHeightChange?: (
         }
     }, [isVisible, config, onHeightChange]);
 
-    if (isLoading || !config || !isVisible) {
+    if (isLoading || !config || !message || !isVisible) {
         return null;
     }
 
     const content = (
         <span ref={textRef} style={brandFontStyle} className="inline-flex items-center gap-3 whitespace-nowrap px-1 font-display text-xs font-bold uppercase tracking-[0.08em] sm:text-sm">
             <Rocket data-announcement-icon size={14} strokeWidth={1.8} className="text-blue-hover" />
-            {config.message}
+            {message}
             <ChevronRight size={15} strokeWidth={1.8} />
         </span>
     );
@@ -172,7 +211,7 @@ export default function AnnouncementBar({ onHeightChange }: { onHeightChange?: (
                             if (onHeightChange) onHeightChange(0);
                         }}
                         className="absolute right-0 top-1/2 -translate-y-1/2 p-1.5 hover:bg-ice-gray transition-colors z-20 bg-white shadow-[-8px_0_12px_rgba(255,255,255,1)]"
-                        aria-label="Close announcement"
+                        aria-label={isChineseLocale ? "关闭公告" : "Close announcement"}
                     >
                         <X className="w-4 h-4" />
                     </button>

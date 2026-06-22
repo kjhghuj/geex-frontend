@@ -6,21 +6,15 @@ interface CountryOption {
     label: string;
 }
 
-const COUNTRIES: CountryOption[] = [
-    { value: "gb", label: "United Kingdom" },
-    { value: "us", label: "United States" },
-    { value: "de", label: "Germany" },
-    { value: "fr", label: "France" },
-];
-
 interface CountrySelectProps {
     value: string;
     onChange: (value: string) => void;
+    options: CountryOption[];
     className?: string;
     required?: boolean;
 }
 
-export function CountrySelect({ value, onChange, className = "", required = false }: CountrySelectProps) {
+export function CountrySelect({ value, onChange, options, className = "", required = false }: CountrySelectProps) {
     const [isOpen, setIsOpen] = useState(false);
     const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -38,20 +32,29 @@ export function CountrySelect({ value, onChange, className = "", required = fals
         };
     }, []);
 
-    const selectedOption = COUNTRIES.find((c) => c.value === value);
+    useEffect(() => {
+        if (value && options.length > 0 && !options.some((option) => option.value === value)) {
+            onChange("");
+        }
+    }, [onChange, options, value]);
+
+    const selectedOption = options.find((c) => c.value === value);
+    const isDisabled = options.length === 0;
 
     return (
         <div className={`relative ${className}`} ref={dropdownRef}>
             <button
                 type="button"
-                onClick={() => setIsOpen(!isOpen)}
+                onClick={() => !isDisabled && setIsOpen(!isOpen)}
+                disabled={isDisabled}
                 className={`w-full border px-4 py-3 rounded-lg flex items-center justify-between bg-white transition-colors duration-200
           ${isOpen ? "border-orbit-blue ring-1 ring-orbit-blue" : "border-gray-200 hover:border-gray-300"}
           ${!selectedOption ? "text-gray-400" : "text-near-black"}
+          ${isDisabled ? "opacity-60 cursor-not-allowed" : ""}
         `}
             >
                 <span className="block truncate">
-                    {selectedOption ? selectedOption.label : "Select Country"}
+                    {selectedOption ? selectedOption.label : isDisabled ? "Loading countries..." : "Select Country"}
                 </span>
                 <ChevronDown
                     className={`w-4 h-4 ml-2 text-gray-400 transition-transform duration-200 ${isOpen ? "transform rotate-180" : ""
@@ -72,7 +75,7 @@ export function CountrySelect({ value, onChange, className = "", required = fals
             {isOpen && (
                 <div className="absolute z-10 w-full mt-1 bg-white border border-gray-100 rounded-lg shadow-lg max-h-60 overflow-auto animate-fade-in-up origin-top">
                     <ul className="py-1">
-                        {COUNTRIES.map((option) => (
+                        {options.map((option) => (
                             <li key={option.value}>
                                 <button
                                     type="button"

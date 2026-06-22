@@ -54,7 +54,7 @@ interface CartContextType {
   cart: StoreCart | null;
   cartLoading: boolean;
   cartCount: number;
-  addItem: (variantId: string, quantity?: number) => Promise<void>;
+  addItem: (variantId: string, quantity?: number) => Promise<StoreCart>;
   updateItem: (lineItemId: string, quantity: number) => Promise<void>;
   removeItem: (lineItemId: string) => Promise<void>;
   refreshCart: () => Promise<void>;
@@ -300,23 +300,52 @@ export function Providers({ children }: ProvidersProps) {
   }, [cart?.id, region, user]);
 
   const addItem = useCallback(
-    async (variantId: string, quantity: number = 1) => {
-      if (!cart?.id) return;
+    async (variantId: string, quantity: number = 1): Promise<StoreCart> => {
       setCartLoading(true);
       try {
-        const updatedCart = await addToCart(cart.id, variantId, quantity);
-        if (updatedCart) setCart(updatedCart);
+        let activeCart = cart;
+
+        if (!activeCart?.id) {
+          if (!region?.id) {
+            throw new Error("Cart is not ready yet. Please try again.");
+          }
+
+          activeCart = await createCart(region.id);
+
+          if (!activeCart?.id) {
+            throw new Error("Unable to create a cart. Please try again.");
+          }
+
+          localStorage.setItem(CART_ID_KEY, activeCart.id);
+
+          if (user) {
+            const token = localStorage.getItem(AUTH_TOKEN_KEY);
+            if (token) {
+              await updateCartOwnership(activeCart.id, token);
+            }
+            await updateCustomerMetadata({ ...user.metadata, active_cart_id: activeCart.id });
+          }
+        }
+
+        const updatedCart = await addToCart(activeCart.id, variantId, quantity);
+        if (!updatedCart) {
+          throw new Error("Unable to add item to cart. Please try again.");
+        }
+
+        setCart(updatedCart);
+        return updatedCart;
       } catch (error: any) {
         // If "Cart is already completed", refresh to reset it
         if (error?.message?.includes("already completed") || error?.type === "invalid_data") {
           await refreshCart();
         }
         console.error("Add item failed:", error);
+        throw error;
       } finally {
         setCartLoading(false);
       }
     },
-    [cart?.id, refreshCart]
+    [cart, refreshCart, region?.id, user]
   );
 
   const updateItem = useCallback(

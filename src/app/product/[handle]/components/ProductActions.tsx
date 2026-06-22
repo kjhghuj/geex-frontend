@@ -13,6 +13,27 @@ interface ProductActionsProps {
   onVariantChange?: (variant: StoreProductVariant | null) => void;
 }
 
+export function getDefaultSelectedOptions(product: StoreProduct): Record<string, string> {
+  const variants = product.variants || [];
+  if (variants.length !== 1) return {};
+
+  const defaultVariant = variants[0];
+  const selectedOptions: Record<string, string> = {};
+
+  product.options?.forEach((option) => {
+    const variantOption = defaultVariant.options?.find(
+      (value) => value.option_id === option.id
+    );
+    const defaultValue = variantOption?.value || option.values?.[0]?.value;
+
+    if (defaultValue) {
+      selectedOptions[option.id] = defaultValue;
+    }
+  });
+
+  return selectedOptions;
+}
+
 function MinusIcon() {
   return (
     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4">
@@ -66,13 +87,26 @@ export default function ProductActions({ product, onVariantChange }: ProductActi
   const router = useRouter();
   const { addItem, cartLoading } = useCart();
   const [quantity, setQuantity] = useState(1);
-  const [selectedOptions, setSelectedOptions] = useState<Record<string, string>>({});
+  const [selectedOptions, setSelectedOptions] = useState<Record<string, string>>(() => getDefaultSelectedOptions(product));
   const [isAdding, setIsAdding] = useState(false);
   const [isBuyingNow, setIsBuyingNow] = useState(false);
   const [justAdded, setJustAdded] = useState(false);
 
-  const variants = product.variants || [];
-  const options = product.options || [];
+  const variants = useMemo(() => product.variants || [], [product.variants]);
+  const options = useMemo(() => product.options || [], [product.options]);
+
+  useEffect(() => {
+    const defaultOptions = getDefaultSelectedOptions(product);
+    if (Object.keys(defaultOptions).length === 0) return;
+
+    setSelectedOptions((currentOptions) => {
+      const shouldApplyDefaults = Object.entries(defaultOptions).some(
+        ([optionId, value]) => currentOptions[optionId] !== value
+      );
+
+      return shouldApplyDefaults ? { ...currentOptions, ...defaultOptions } : currentOptions;
+    });
+  }, [product]);
 
   // Check if all available options have been selected
   const isAllOptionsSelected = useMemo(() => {

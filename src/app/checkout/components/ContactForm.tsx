@@ -1,14 +1,73 @@
-import { CardElement } from "@stripe/react-stripe-js";
+import type { Dispatch, SetStateAction } from "react";
+import { CardCvcElement, CardExpiryElement, CardNumberElement } from "@stripe/react-stripe-js";
+import type {
+  StripeCardCvcElementChangeEvent,
+  StripeCardExpiryElementChangeEvent,
+  StripeCardNumberElementChangeEvent,
+} from "@stripe/stripe-js";
 import { CountrySelect } from "./CountrySelect";
 
-interface ContactFormProps {
-  billingData: any;
-  setBillingData: (data: any) => void;
-  cardData: any;
-  setCardData: (data: any) => void;
+interface BillingData {
+  name: string;
+  phone: string;
+  email: string;
+  address: string;
+  city: string;
+  postalCode: string;
+  country: string;
 }
 
-export function ContactForm({ billingData, setBillingData, cardData, setCardData }: ContactFormProps) {
+interface CardData {
+  name: string;
+}
+
+interface CountryOption {
+  value: string;
+  label: string;
+}
+
+interface ContactFormProps {
+  billingData: BillingData;
+  setBillingData: Dispatch<SetStateAction<BillingData>>;
+  cardData: CardData;
+  setCardData: Dispatch<SetStateAction<CardData>>;
+  countryOptions: CountryOption[];
+  onCardNumberChange: (event: StripeCardNumberElementChangeEvent) => void;
+  onCardExpiryChange: (event: StripeCardExpiryElementChangeEvent) => void;
+  onCardCvcChange: (event: StripeCardCvcElementChangeEvent) => void;
+}
+
+const stripeElementStyle = {
+  base: {
+    fontSize: "16px",
+    color: "#2c2c2c",
+    "::placeholder": { color: "#9ca3af" },
+  },
+};
+
+const cardNumberOptions = {
+  showIcon: true,
+  style: stripeElementStyle,
+};
+
+const cardExpiryOptions = {
+  style: stripeElementStyle,
+};
+
+const cardCvcOptions = {
+  style: stripeElementStyle,
+};
+
+export function ContactForm({
+  billingData,
+  setBillingData,
+  cardData,
+  setCardData,
+  countryOptions,
+  onCardNumberChange,
+  onCardExpiryChange,
+  onCardCvcChange,
+}: ContactFormProps) {
   return (
     <>
       <div className="mb-8">
@@ -20,7 +79,7 @@ export function ContactForm({ billingData, setBillingData, cardData, setCardData
               <input
                 type="text"
                 value={billingData.name}
-                onChange={(e) => setBillingData({ ...billingData, name: e.target.value })}
+                onChange={(e) => setBillingData((current) => ({ ...current, name: e.target.value }))}
                 className="w-full border border-gray-200 px-4 py-3 focus:outline-none focus:border-orbit-blue rounded-lg"
                 placeholder="Full Name"
                 required
@@ -31,7 +90,7 @@ export function ContactForm({ billingData, setBillingData, cardData, setCardData
               <input
                 type="tel"
                 value={billingData.phone}
-                onChange={(e) => setBillingData({ ...billingData, phone: e.target.value })}
+                onChange={(e) => setBillingData((current) => ({ ...current, phone: e.target.value }))}
                 className="w-full border border-gray-200 px-4 py-3 focus:outline-none focus:border-orbit-blue rounded-lg"
                 placeholder="+1 (555) 000-0000"
                 required
@@ -43,7 +102,7 @@ export function ContactForm({ billingData, setBillingData, cardData, setCardData
             <input
               type="email"
               value={billingData.email}
-              onChange={(e) => setBillingData({ ...billingData, email: e.target.value })}
+              onChange={(e) => setBillingData((current) => ({ ...current, email: e.target.value }))}
               className="w-full border border-gray-200 px-4 py-3 focus:outline-none focus:border-orbit-blue rounded-lg"
               required
             />
@@ -57,7 +116,7 @@ export function ContactForm({ billingData, setBillingData, cardData, setCardData
             <label className="block text-xs uppercase tracking-widest text-near-black mb-2">Address</label>
             <textarea
               value={billingData.address}
-              onChange={(e) => setBillingData({ ...billingData, address: e.target.value })}
+              onChange={(e) => setBillingData((current) => ({ ...current, address: e.target.value }))}
               className="w-full border border-gray-200 px-4 py-3 focus:outline-none focus:border-orbit-blue min-h-[80px] rounded-lg"
               rows={2}
               required
@@ -70,7 +129,7 @@ export function ContactForm({ billingData, setBillingData, cardData, setCardData
               <input
                 type="text"
                 value={billingData.city}
-                onChange={(e) => setBillingData({ ...billingData, city: e.target.value })}
+                onChange={(e) => setBillingData((current) => ({ ...current, city: e.target.value }))}
                 className="w-full border border-gray-200 px-4 py-3 focus:outline-none focus:border-orbit-blue rounded-lg"
                 required
               />
@@ -80,7 +139,7 @@ export function ContactForm({ billingData, setBillingData, cardData, setCardData
               <input
                 type="text"
                 value={billingData.postalCode}
-                onChange={(e) => setBillingData({ ...billingData, postalCode: e.target.value })}
+                onChange={(e) => setBillingData((current) => ({ ...current, postalCode: e.target.value }))}
                 className="w-full border border-gray-200 px-4 py-3 focus:outline-none focus:border-orbit-blue rounded-lg"
                 required
               />
@@ -91,7 +150,8 @@ export function ContactForm({ billingData, setBillingData, cardData, setCardData
             <label className="block text-xs uppercase tracking-widest text-near-black mb-2">Country</label>
             <CountrySelect
               value={billingData.country}
-              onChange={(val) => setBillingData({ ...billingData, country: val })}
+              onChange={(val) => setBillingData((current) => ({ ...current, country: val }))}
+              options={countryOptions}
               required
             />
           </div>
@@ -101,20 +161,25 @@ export function ContactForm({ billingData, setBillingData, cardData, setCardData
 
         <div className="space-y-4">
           <div>
-            <label className="block text-xs uppercase tracking-widest text-near-black mb-2">Card Information</label>
+            <label className="block text-xs uppercase tracking-widest text-near-black mb-2">Card Number</label>
             <div className="w-full border border-gray-200 px-4 py-3 focus-within:border-orbit-blue rounded-lg bg-white">
-              <CardElement
-                options={{
-                  hidePostalCode: true,
-                  style: {
-                    base: {
-                      fontSize: '16px',
-                      color: '#2c2c2c',
-                      '::placeholder': { color: '#9ca3af' },
-                    },
-                  },
-                }}
-              />
+              <CardNumberElement onChange={onCardNumberChange} options={cardNumberOptions} />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs uppercase tracking-widest text-near-black mb-2">Expiration Date</label>
+              <div className="w-full border border-gray-200 px-4 py-3 focus-within:border-orbit-blue rounded-lg bg-white">
+                <CardExpiryElement onChange={onCardExpiryChange} options={cardExpiryOptions} />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-xs uppercase tracking-widest text-near-black mb-2">CVC</label>
+              <div className="w-full border border-gray-200 px-4 py-3 focus-within:border-orbit-blue rounded-lg bg-white">
+                <CardCvcElement onChange={onCardCvcChange} options={cardCvcOptions} />
+              </div>
             </div>
           </div>
 
@@ -123,7 +188,7 @@ export function ContactForm({ billingData, setBillingData, cardData, setCardData
             <input
               type="text"
               value={cardData.name}
-              onChange={(e) => setCardData({ ...cardData, name: e.target.value })}
+              onChange={(e) => setCardData((current) => ({ ...current, name: e.target.value }))}
               className="w-full border border-gray-200 px-4 py-3 focus:outline-none focus:border-orbit-blue rounded-lg"
               placeholder="John Doe"
               required

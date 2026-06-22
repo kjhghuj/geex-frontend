@@ -1,31 +1,149 @@
 ﻿"use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { loadStripe } from "@stripe/stripe-js";
-import { Elements, CardElement, useStripe, useElements } from "@stripe/react-stripe-js";
-import { useCart } from "@/lib/providers";
+import { Elements, CardNumberElement, useStripe, useElements } from "@stripe/react-stripe-js";
+import { useCart, useRegion } from "@/lib/providers";
 import { CheckoutError } from "./components/CheckoutError";
 import { ContactForm } from "./components/ContactForm";
 import { SubmitButton } from "./components/SubmitButton";
 
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_KEY || "");
 
+type StripeFieldState = {
+  complete: boolean;
+  empty: boolean;
+  error: string | null;
+};
+
+type CardState = {
+  number: StripeFieldState;
+  expiry: StripeFieldState;
+  cvc: StripeFieldState;
+};
+
+type BillingData = {
+  name: string;
+  phone: string;
+  email: string;
+  address: string;
+  city: string;
+  postalCode: string;
+  country: string;
+};
+
+type CardData = {
+  name: string;
+};
+
+type CountryOption = {
+  value: string;
+  label: string;
+};
+
+const emptyStripeFieldState: StripeFieldState = {
+  complete: false,
+  empty: true,
+  error: null,
+};
+
+const isValidEmail = (email: string) => /\S+@\S+\.\S+/.test(email);
+
+function getStripeFieldValidationError(
+  fieldState: StripeFieldState,
+  emptyMessage: string,
+  incompleteMessage: string,
+) {
+  if (fieldState.error) {
+    return fieldState.error;
+  }
+
+  if (fieldState.empty) {
+    return emptyMessage;
+  }
+
+  if (!fieldState.complete) {
+    return incompleteMessage;
+  }
+
+  return null;
+}
+
+function getCheckoutValidationError(
+  billingData: BillingData,
+  cardData: CardData,
+  cardState: CardState,
+) {
+  if (!billingData.name.trim()) return "Enter your name.";
+  if (!billingData.phone.trim()) return "Enter your phone number.";
+  if (!billingData.email.trim()) return "Enter your email address.";
+  if (!isValidEmail(billingData.email.trim())) return "Enter a valid email address.";
+  if (!billingData.address.trim()) return "Enter your shipping address.";
+  if (!billingData.city.trim()) return "Enter your city.";
+  if (!billingData.postalCode.trim()) return "Enter your postal code.";
+  if (!billingData.country.trim()) return "Select your country.";
+
+  const cardNumberError = getStripeFieldValidationError(
+    cardState.number,
+    "Enter your card number.",
+    "Enter a valid card number.",
+  );
+  if (cardNumberError) return cardNumberError;
+
+  const cardExpiryError = getStripeFieldValidationError(
+    cardState.expiry,
+    "Enter your card expiration date.",
+    "Enter a valid card expiration date.",
+  );
+  if (cardExpiryError) return cardExpiryError;
+
+  const cardCvcError = getStripeFieldValidationError(
+    cardState.cvc,
+    "Enter your card CVC.",
+    "Enter a valid card CVC.",
+  );
+  if (cardCvcError) return cardCvcError;
+
+  if (!cardData.name.trim()) return "Enter the cardholder name.";
+
+  return null;
+}
+
+function getCountryOptions(cartRegion: any, fallbackRegion: any): CountryOption[] {
+  const countries = cartRegion?.countries?.length ? cartRegion.countries : fallbackRegion?.countries || [];
+
+  return countries
+    .map((country: any) => ({
+      value: country.iso_2,
+      label: country.display_name || country.name || country.iso_2?.toUpperCase(),
+    }))
+    .filter((country: CountryOption) => country.value && country.label)
+    .sort((a: CountryOption, b: CountryOption) => a.label.localeCompare(b.label));
+}
+
 function CheckoutForm() {
   const { cart, refreshCart } = useCart();
+  const { region } = useRegion();
   const stripe = useStripe();
   const elements = useElements();
   const router = useRouter();
+  const countryOptions = useMemo(() => getCountryOptions(cart?.region, region), [cart?.region, region]);
 
   const [processing, setProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [cardState, setCardState] = useState<CardState>({
+    number: emptyStripeFieldState,
+    expiry: emptyStripeFieldState,
+    cvc: emptyStripeFieldState,
+  });
 
-  const [cardData, setCardData] = useState({
+  const [cardData, setCardData] = useState<CardData>({
     name: "",
   });
 
-  const [billingData, setBillingData] = useState({
+  const [billingData, setBillingData] = useState<BillingData>({
     name: "", // Combined name
     phone: "",
     email: "",
@@ -42,6 +160,12 @@ function CheckoutForm() {
       return;
     }
 
+    const validationError = getCheckoutValidationError(billingData, cardData, cardState);
+    if (validationError) {
+      setError(validationError);
+      return;
+    }
+
     // Redirect if cart is invalid OR already completed
     if (!cart?.id || cart.items?.length === 0 || cart.completed_at) {
       if (cart?.completed_at) {
@@ -54,8 +178,8 @@ function CheckoutForm() {
       return;
     }
 
-    const cardElement = elements.getElement(CardElement);
-    if (!cardElement) return;
+    const cardNumberElement = elements.getElement(CardNumberElement);
+    if (!cardNumberElement) return;
 
     setProcessing(true);
     setError(null);
@@ -149,10 +273,11 @@ function CheckoutForm() {
 
       // 2. Confirm Payment with Stripe
       const result = await stripe.confirmCardPayment(clientSecret, {
+        return_url: `${window.location.origin}/order/confirmed`,
         payment_method: {
-          card: cardElement,
+          card: cardNumberElement,
           billing_details: {
-            name: billingData.name,
+            name: cardData.name,
             email: billingData.email,
             phone: billingData.phone,
             address: {
@@ -226,12 +351,43 @@ function CheckoutForm() {
   return (
     <>
       <CheckoutError error={error} onClear={() => setError(null)} />
-      <form onSubmit={handleSubmit}>
+      <form onSubmit={handleSubmit} noValidate>
         <ContactForm
           billingData={billingData}
           setBillingData={setBillingData}
           cardData={cardData}
           setCardData={setCardData}
+          countryOptions={countryOptions}
+          onCardNumberChange={(event) =>
+            setCardState((current) => ({
+              ...current,
+              number: {
+                complete: event.complete,
+                empty: event.empty,
+                error: event.error?.message ?? null,
+              },
+            }))
+          }
+          onCardExpiryChange={(event) =>
+            setCardState((current) => ({
+              ...current,
+              expiry: {
+                complete: event.complete,
+                empty: event.empty,
+                error: event.error?.message ?? null,
+              },
+            }))
+          }
+          onCardCvcChange={(event) =>
+            setCardState((current) => ({
+              ...current,
+              cvc: {
+                complete: event.complete,
+                empty: event.empty,
+                error: event.error?.message ?? null,
+              },
+            }))
+          }
         />
         <SubmitButton processing={processing} disabled={processing || !stripe || !elements} />
       </form>
@@ -244,7 +400,7 @@ export default function CheckoutPage() {
     <div className="pt-24 pb-16 min-h-screen bg-cool-white">
       <div className="max-w-[800px] mx-auto px-6">
         <Link href="/cart" className="inline-block mb-6 text-ink-muted hover:text-orbit-blue">
-          鈫?Back to Cart
+          &larr; Back to Cart
         </Link>
         <h1 className="font-serif text-3xl text-near-black mb-8">Checkout</h1>
 
