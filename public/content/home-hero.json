@@ -1,0 +1,58 @@
+{
+  "slides": [
+    {
+      "eyebrow": {
+        "accent": "Premium Gear.",
+        "text": "Better Everyday."
+      },
+      "title": ["GEAR UP YOUR", "EVERYDAY SETUP"],
+      "description": "High-performance keyboards, precision peripherals, and smart accessories designed to elevate your workflow and play.",
+      "image": "/brand/geex-hero-setup.png",
+      "imageAlt": "GEEX desk setup with keyboard, mouse, earbuds, phone stand, tablet, and charging accessories",
+      "primaryCta": {
+        "label": "Shop Bestsellers",
+        "href": "/shop"
+      },
+      "secondaryCta": {
+        "label": "Explore Categories",
+        "href": "/shop?category=desk-setups"
+      }
+    },
+    {
+      "eyebrow": {
+        "accent": "Low-Profile Control.",
+        "text": "Quiet Daily Typing."
+      },
+      "title": ["TYPE CLEAN.", "WORK FASTER."],
+      "description": "Compact keyboards, desk mats, and focus-friendly tools that keep your setup sharp without adding clutter.",
+      "image": "https://images.unsplash.com/photo-1618384887929-16ec33fab9ef?auto=format&fit=crop&q=90&w=1400",
+      "imageAlt": "Low-profile mechanical keyboard in a clean desktop setup",
+      "primaryCta": {
+        "label": "Shop Keyboards",
+        "href": "/shop?category=keyboards"
+      },
+      "secondaryCta": {
+        "label": "Build a Desk Setup",
+        "href": "/shop?category=desk-setups"
+      }
+    },
+    {
+      "eyebrow": {
+        "accent": "Gaming Ready.",
+        "text": "Wireless Focus."
+      },
+      "title": ["PLAY SHARP.", "STAY LOCKED IN."],
+      "description": "Responsive mice, wireless audio, and low-latency accessories built for play, calls, and everyday switching.",
+      "image": "https://images.unsplash.com/photo-1527864550417-7fd91fc51a46?auto=format&fit=crop&q=90&w=1400",
+      "imageAlt": "Gaming keyboard and mouse accessories on a desktop",
+      "primaryCta": {
+        "label": "Shop Gaming",
+        "href": "/shop?category=gaming"
+      },
+      "secondaryCta": {
+        "label": "Browse Audio",
+        "href": "/shop?category=audio"
+      }
+    }
+  ]
+}
