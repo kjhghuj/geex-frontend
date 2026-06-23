@@ -1,288 +1,295 @@
-﻿"use client";
+"use client"
 
-import { useState, useEffect, Suspense } from "react";
-import Link from "next/link";
-import { useSearchParams } from "next/navigation";
-import { getProductsWithVariantImages } from "@/lib/medusa";
+import { Suspense, useCallback, useEffect, useRef, useState } from "react"
+import Link from "next/link"
+import { useSearchParams } from "next/navigation"
+import { getProductsWithVariantImages } from "@/lib/medusa"
+import { FlightDeliveryAnimation } from "./components/FlightDeliveryAnimation"
+import { OrderLookupForm } from "./components/OrderLookupForm"
+import { OrderSummary } from "./components/OrderSummary"
+import { TrackingMap } from "./components/TrackingMap"
+import { TrackingStatusSummary } from "./components/TrackingStatusSummary"
+import { TrackingTimeline } from "./components/TrackingTimeline"
+import type { LookupOrder, PublicTracking } from "./components/types"
 
-// Icons
-function SearchIcon() {
-    return (
-        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
-            <path strokeLinecap="round" strokeLinejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
-        </svg>
-    );
+const ORDER_LOOKUP_SESSION_KEY = "geex:last-order-lookup"
+
+type StoredLookup = {
+  order: string
+  email: string
 }
 
-function ArrowRightIcon() {
-    return (
-        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3" />
-        </svg>
-    );
+function normalizeOrderId(orderId: string) {
+  return orderId.startsWith("order_") ? orderId : `order_${orderId}`
+}
+
+function readStoredLookup(): StoredLookup | null {
+  if (typeof window === "undefined") return null
+
+  try {
+    const storedLookup = window.sessionStorage.getItem(ORDER_LOOKUP_SESSION_KEY)
+    if (!storedLookup) return null
+
+    const parsedLookup = JSON.parse(storedLookup) as Partial<StoredLookup>
+    if (
+      typeof parsedLookup.order === "string" &&
+      typeof parsedLookup.email === "string" &&
+      parsedLookup.order.trim() &&
+      parsedLookup.email.trim()
+    ) {
+      return {
+        order: parsedLookup.order,
+        email: parsedLookup.email,
+      }
+    }
+  } catch (error) {
+    console.error("Failed to restore order lookup:", error)
+  }
+
+  window.sessionStorage.removeItem(ORDER_LOOKUP_SESSION_KEY)
+  return null
+}
+
+function persistLookup(order: string, email: string) {
+  if (typeof window === "undefined") return
+
+  const fullOrderId = normalizeOrderId(order.trim())
+  const normalizedEmail = email.trim()
+  const params = new URLSearchParams()
+
+  params.set("order", fullOrderId)
+  params.set("email", normalizedEmail)
+  window.sessionStorage.setItem(
+    ORDER_LOOKUP_SESSION_KEY,
+    JSON.stringify({
+      order: fullOrderId,
+      email: normalizedEmail,
+    })
+  )
+  window.history.replaceState(null, "", `/order/lookup?${params.toString()}`)
+}
+
+function clearPersistedLookup() {
+  if (typeof window === "undefined") return
+
+  window.sessionStorage.removeItem(ORDER_LOOKUP_SESSION_KEY)
+  window.history.replaceState(null, "", "/order/lookup")
 }
 
 function OrderLookupContent() {
-    const searchParams = useSearchParams();
-    const [orderId, setOrderId] = useState("");
-    const [email, setEmail] = useState("");
-    const [loading, setLoading] = useState(false);
-    const [error, setError] = useState<string | null>(null);
-    const [orderData, setOrderData] = useState<any | null>(null);
-    const [variantImageMap, setVariantImageMap] = useState<Record<string, string>>({});
+  const searchParams = useSearchParams()
+  const restoredLookupRef = useRef<string | null>(null)
+  const [orderId, setOrderId] = useState("")
+  const [email, setEmail] = useState("")
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [orderData, setOrderData] = useState<LookupOrder | null>(null)
+  const [trackingData, setTrackingData] = useState<PublicTracking | null>(null)
+  const [variantImageMap, setVariantImageMap] = useState<Record<string, string>>({})
 
-    // Resolve variant images once order is loaded
-    useEffect(() => {
-        async function resolveVariantImages() {
-            if (!orderData || !orderData.items) return;
+  useEffect(() => {
+    async function resolveVariantImages() {
+      if (!orderData?.items?.length) return
 
-            // Collect unique product IDs from order items with variants
-            const productIds = new Set<string>();
-            orderData.items.forEach((item: any) => {
-                if (item.variant_id && item.product_id && !variantImageMap[item.variant_id]) {
-                    productIds.add(item.product_id);
-                }
-            });
+      const productIds = new Set<string>()
 
-            if (productIds.size === 0) return;
-
-            try {
-                // Use undefined for region_id since we check order items directly
-                const products = await getProductsWithVariantImages(Array.from(productIds), orderData.region_id);
-                if (!products || products.length === 0) return;
-
-                const newVariantImages: Record<string, string> = {};
-
-                products.forEach((product: any) => {
-                    const productImage = product.thumbnail || product.images?.[0]?.url;
-
-                    if (product.variants) {
-                        product.variants.forEach((variant: any) => {
-                            if (!variant.id) return;
-
-                            if (variant.thumbnail) {
-                                newVariantImages[variant.id] = variant.thumbnail;
-                            } else if (variant.images && variant.images.length > 0) {
-                                const sorted = [...variant.images].sort((a: any, b: any) => (a.rank ?? 999) - (b.rank ?? 999));
-                                newVariantImages[variant.id] = sorted[0].url;
-                            } else if (productImage) {
-                                newVariantImages[variant.id] = productImage;
-                            }
-                        });
-                    }
-                });
-
-                if (Object.keys(newVariantImages).length > 0) {
-                    setVariantImageMap(prev => ({ ...prev, ...newVariantImages }));
-                }
-            } catch (error) {
-                console.error("Failed to fetch variant images:", error);
-            }
+      orderData.items.forEach((item) => {
+        if (item.variant_id && item.product_id) {
+          productIds.add(item.product_id)
         }
+      })
 
-        resolveVariantImages();
-    }, [orderData]);
+      if (productIds.size === 0) return
 
-    const lookupOrder = async (id: string, mail: string) => {
-        if (!id || !mail) {
-            setError("Please fill in all fields.");
-            return;
-        }
+      try {
+        const products = await getProductsWithVariantImages(Array.from(productIds), orderData.region_id || undefined)
+        const nextVariantImages: Record<string, string> = {}
 
-        setLoading(true);
-        setError(null);
-        setOrderData(null);
+        products.forEach((product: any) => {
+          const productImage = product.thumbnail || product.images?.[0]?.url
 
-        try {
-            // Prepend order_ prefix if not already present
-            const fullOrderId = id.startsWith('order_') ? id : `order_${id}`;
+          product.variants?.forEach((variant: any) => {
+            if (!variant.id) return
 
-            // Request fields needed for variant image resolution
-            const response = await fetch(`/api/medusa/store/orders/${fullOrderId}?fields=+items.variant_id,+items.product_id`, {
-                headers: {
-                    'x-publishable-api-key': process.env.NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY || '',
-                }
-            });
-
-            if (!response.ok) {
-                if (response.status === 404) {
-                    throw new Error("Order not found or access denied.");
-                }
-                throw new Error("Could not retrieve order details.");
+            if (variant.thumbnail) {
+              nextVariantImages[variant.id] = variant.thumbnail
+              return
             }
 
-            const data = await response.json();
-            const order = data.order;
-
-            // Security Check: Client-side email validation
-            if (!order || !order.email || order.email.toLowerCase() !== mail.toLowerCase()) {
-                // Fake 404 security practice: Don't reveal order exists if email mismatch
-                throw new Error("Order not found with provided details.");
+            if (variant.images?.length) {
+              const sorted = [...variant.images].sort((a: any, b: any) => (a.rank ?? 999) - (b.rank ?? 999))
+              nextVariantImages[variant.id] = sorted[0].url
+              return
             }
 
-            setOrderData(order);
+            if (productImage) {
+              nextVariantImages[variant.id] = productImage
+            }
+          })
+        })
 
-        } catch (err: any) {
-            console.error("Lookup error:", err);
-            setError(err.message || "We couldn't find an order confirming those details. Please check and try again.");
-        } finally {
-            setLoading(false);
+        if (Object.keys(nextVariantImages).length > 0) {
+          setVariantImageMap((current) => ({ ...current, ...nextVariantImages }))
         }
-    };
+      } catch (error) {
+        console.error("Failed to fetch variant images:", error)
+      }
+    }
 
-    const handleLookup = async (e: React.FormEvent) => {
-        e.preventDefault();
-        await lookupOrder(orderId, email);
-    };
+    resolveVariantImages()
+  }, [orderData])
 
-    useEffect(() => {
-        const urlOrder = searchParams.get("order");
-        const urlEmail = searchParams.get("email");
+  const lookupOrder = useCallback(async (id: string, mail: string, options: { persist?: boolean } = {}) => {
+    const normalizedOrder = id.trim()
+    const normalizedEmail = mail.trim()
 
-        if (urlOrder && urlEmail) {
-            setOrderId(urlOrder);
-            setEmail(urlEmail);
-            // Small delay to ensure state updates or UI readiness if needed, but direct call is fine
-            lookupOrder(urlOrder, urlEmail);
+    if (!normalizedOrder || !normalizedEmail) {
+      setError("Please fill in all fields.")
+      return
+    }
+
+    setLoading(true)
+    setError(null)
+    setOrderData(null)
+    setTrackingData(null)
+    setVariantImageMap({})
+
+    try {
+      const fullOrderId = normalizeOrderId(normalizedOrder)
+      const response = await fetch(`/api/medusa/store/orders/${fullOrderId}/lookup`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-publishable-api-key": process.env.NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY || "",
+        },
+        body: JSON.stringify({ email: normalizedEmail }),
+      })
+
+      if (!response.ok) {
+        if (response.status === 404) {
+          throw new Error("Order not found with provided details.")
         }
-    }, [searchParams]);
 
-    return (
-        <div className="pt-24 pb-20 bg-cool-white">
-            <div className="max-w-xl mx-auto px-6">
+        const data = await response.json().catch(() => null)
+        throw new Error(data?.message || "Could not retrieve order details.")
+      }
 
-                <h1 className="font-serif text-3xl text-near-black mb-4 text-center">Track Your Order</h1>
-                <p className="text-ink-muted text-center mb-10">
-                    Enter your order ID and the email address used at checkout to view your order status.
-                </p>
+      const data = await response.json()
+      setOrderData(data.order)
+      setTrackingData(data.tracking)
 
-                {!orderData ? (
-                    /* LOOKUP FORM */
-                    <div className="bg-white p-8 rounded-2xl shadow-sm border border-gray-100">
-                        <form onSubmit={handleLookup} className="space-y-6">
-                            <div>
-                                <label className="block text-xs uppercase tracking-widest text-near-black mb-2">Order ID</label>
-                                <input
-                                    type="text"
-                                    value={orderId}
-                                    onChange={(e) => setOrderId(e.target.value.trim())}
-                                    placeholder="e.g. 01JMHK7X8Y..."
-                                    className="w-full border border-gray-200 px-4 py-3 focus:outline-none focus:border-orbit-blue rounded-lg"
-                                    required
-                                />
-                            </div>
+      if (options.persist) {
+        persistLookup(fullOrderId, normalizedEmail)
+        setOrderId(fullOrderId)
+        setEmail(normalizedEmail)
+      }
+    } catch (err: any) {
+      console.error("Lookup error:", err)
+      setError(err.message || "We couldn't find an order confirming those details. Please check and try again.")
+    } finally {
+      setLoading(false)
+    }
+  }, [])
 
-                            <div>
-                                <label className="block text-xs uppercase tracking-widest text-near-black mb-2">Email Address</label>
-                                <input
-                                    type="email"
-                                    value={email}
-                                    onChange={(e) => setEmail(e.target.value.trim())}
-                                    placeholder="email@example.com"
-                                    className="w-full border border-gray-200 px-4 py-3 focus:outline-none focus:border-orbit-blue rounded-lg"
-                                    required
-                                />
-                            </div>
+  const handleLookup = async (event: React.FormEvent) => {
+    event.preventDefault()
+    await lookupOrder(orderId, email, { persist: true })
+  }
 
-                            {error && (
-                                <div className="p-4 bg-red-50 text-red-600 text-sm rounded-lg flex gap-2 items-start">
-                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5 flex-shrink-0 mt-0.5">
-                                        <path fillRule="evenodd" d="M18 10a8 8 0 1 1-16 0 8 8 0 0 1 16 0Zm-8-5a.75.75 0 0 1 .75.75v4.5a.75.75 0 0 1-1.5 0v-4.5A.75.75 0 0 1 10 5Zm0 10a1 1 0 1 0 0-2 1 1 0 0 0 0 2Z" clipRule="evenodd" />
-                                    </svg>
-                                    <span>{error}</span>
-                                </div>
-                            )}
+  useEffect(() => {
+    const urlOrder = searchParams.get("order")
+    const urlEmail = searchParams.get("email")
+    const storedLookup = !urlOrder || !urlEmail ? readStoredLookup() : null
+    const nextOrder = urlOrder && urlEmail ? urlOrder : storedLookup?.order
+    const nextEmail = urlOrder && urlEmail ? urlEmail : storedLookup?.email
 
-                            <button
-                                type="submit"
-                                disabled={loading}
-                                className="w-full bg-near-black text-white py-4 rounded-full hover:bg-ink-muted transition-colors font-medium flex items-center justify-center gap-2 disabled:opacity-70"
-                            >
-                                {loading ? (
-                                    <>
-                                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                                        <span>Searching...</span>
-                                    </>
-                                ) : (
-                                    <>
-                                        <SearchIcon />
-                                        <span>Track Order</span>
-                                    </>
-                                )}
-                            </button>
-                        </form>
-                    </div>
-                ) : (
-                    /* ORDER DETAILS */
-                    <div className="bg-white p-8 rounded-2xl shadow-sm border border-gray-100 animate-fade-in">
-                        <div className="flex justify-between items-center mb-6 pb-6 border-b border-gray-100">
-                            <div>
-                                <p className="text-xs uppercase tracking-widest text-ink-muted mb-1">Status</p>
-                                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium uppercase tracking-wide ${orderData.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
-                                    orderData.status === 'completed' ? 'bg-green-100 text-green-800' :
-                                        'bg-gray-100 text-gray-800'
-                                    }`}>
-                                    {orderData.status}
-                                </span>
-                            </div>
-                            <div className="text-right">
-                                <p className="text-xs uppercase tracking-widest text-ink-muted mb-1">Date</p>
-                                <p className="text-sm font-medium text-near-black">
-                                    {new Date(orderData.created_at).toLocaleDateString()}
-                                </p>
-                            </div>
-                        </div>
+    if (!nextOrder || !nextEmail) return
 
-                        <div className="space-y-4 mb-8">
-                            {orderData.items?.map((item: any) => (
-                                <div key={item.id} className="flex justify-between items-center text-sm">
-                                    <div className="flex items-center gap-3">
-                                        <div className="w-12 h-12 bg-gray-50 rounded flex-shrink-0 relative overflow-hidden">
-                                            {/* Display resolved variant image or fallback to thumbnail */}
-                                            {(item.variant_id && variantImageMap[item.variant_id]) ? (
-                                                <img src={variantImageMap[item.variant_id]} alt={item.title} className="w-full h-full object-cover" />
-                                            ) : item.thumbnail ? (
-                                                <img src={item.thumbnail} alt={item.title} className="w-full h-full object-cover" />
-                                            ) : null}
-                                        </div>
-                                        <div>
-                                            <p className="font-medium text-near-black">{item.title}</p>
-                                            <p className="text-ink-muted">Qty: {item.quantity}</p>
-                                        </div>
-                                    </div>
-                                    <span className="font-medium text-near-black">
-                                        {(item.unit_price / 100).toLocaleString('en-GB', { style: 'currency', currency: orderData.currency_code.toUpperCase() })}
-                                    </span>
-                                </div>
-                            ))}
-                        </div>
+    const lookupKey = `${nextOrder}:${nextEmail}`
+    if (restoredLookupRef.current === lookupKey) return
 
-                        <div className="border-t border-gray-100 pt-6 flex justify-between items-center mb-8">
-                            <span className="font-serif text-lg text-near-black">Total</span>
-                            <span className="font-serif text-xl text-near-black font-bold">
-                                {(orderData.total / 100).toLocaleString('en-GB', { style: 'currency', currency: orderData.currency_code.toUpperCase() })}
-                            </span>
-                        </div>
+    restoredLookupRef.current = lookupKey
+    setOrderId(nextOrder)
+    setEmail(nextEmail)
+    lookupOrder(nextOrder, nextEmail)
+  }, [lookupOrder, searchParams])
 
-                        <div className="text-center space-y-3">
-                            <Link href="/shop" className="block w-full text-center bg-near-black text-white py-3 rounded-full hover:bg-ink-muted transition-colors font-medium">
-                                Continue Shopping
-                            </Link>
-                            <button onClick={() => setOrderData(null)} className="text-sm text-ink-muted hover:text-orbit-blue underline">
-                                Search another order
-                            </button>
-                        </div>
-                    </div>
-                )}
-            </div>
+  return (
+    <div className="min-h-screen bg-cool-white pt-24 pb-20">
+      <div className="mx-auto max-w-[1200px] px-5 sm:px-6">
+        <div className="mx-auto mb-10 max-w-2xl text-center">
+          <p className="mb-3 text-xs font-bold uppercase tracking-[0.24em] text-orbit-blue">
+            GEEX global fulfillment
+          </p>
+          <h1 className="font-display text-4xl font-black uppercase leading-tight text-near-black sm:text-5xl">
+            Track Your Order
+          </h1>
+          <p className="mt-4 text-sm leading-6 text-ink-muted sm:text-base">
+            Enter your order ID and checkout email to view customer-safe delivery progress, carrier updates, and estimated route status.
+          </p>
         </div>
-    );
+
+        {!orderData || !trackingData ? (
+          <div className="mx-auto max-w-xl">
+            <OrderLookupForm
+              orderId={orderId}
+              email={email}
+              loading={loading}
+              error={error}
+              onOrderIdChange={setOrderId}
+              onEmailChange={setEmail}
+              onSubmit={handleLookup}
+            />
+          </div>
+        ) : (
+          <div className="space-y-6 animate-fade-in">
+            <TrackingStatusSummary tracking={trackingData} />
+
+            <div className="grid gap-6 lg:grid-cols-[minmax(0,1.05fr)_minmax(360px,0.95fr)]">
+              <div className="space-y-6">
+                <FlightDeliveryAnimation tracking={trackingData} />
+                <TrackingTimeline tracking={trackingData} />
+              </div>
+              <div className="space-y-6">
+                <TrackingMap tracking={trackingData} />
+                <OrderSummary order={orderData} variantImageMap={variantImageMap} />
+              </div>
+            </div>
+
+            <div className="grid gap-3 sm:grid-cols-2">
+              <Link
+                href="/shop"
+                className="block bg-near-black px-6 py-4 text-center text-xs font-bold uppercase tracking-widest text-white transition-colors hover:bg-blue-hover"
+              >
+                Continue Shopping
+              </Link>
+              <button
+                onClick={() => {
+                  clearPersistedLookup()
+                  restoredLookupRef.current = null
+                  setOrderId("")
+                  setEmail("")
+                  setError(null)
+                  setOrderData(null)
+                  setTrackingData(null)
+                  setVariantImageMap({})
+                }}
+                className="border border-line-gray bg-white px-6 py-4 text-xs font-bold uppercase tracking-widest text-near-black transition-colors hover:border-near-black"
+              >
+                Search another order
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  )
 }
 
 export default function OrderLookupPage() {
-    return (
-        <Suspense fallback={<div className="min-h-screen bg-cool-white flex items-center justify-center"><div className="w-6 h-6 border-2 border-orbit-blue border-t-transparent rounded-full animate-spin"></div></div>}>
-            <OrderLookupContent />
-        </Suspense>
-    );
+  return (
+    <Suspense fallback={<div className="flex min-h-screen items-center justify-center bg-cool-white"><div className="h-6 w-6 rounded-full border-2 border-orbit-blue border-t-transparent animate-spin" /></div>}>
+      <OrderLookupContent />
+    </Suspense>
+  )
 }

@@ -6,7 +6,8 @@
     "dev": "next dev -p 3030",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "test:tracking-ui": "node scripts/order-tracking-ui-regression.test.mjs"
   },
   "dependencies": {
     "@marsidev/react-turnstile": "^1.4.1",
@@ -17,6 +18,7 @@
     "@tailwindcss/typography": "^0.5.19",
     "html-react-parser": "^5.2.17",
     "lucide-react": "^0.562.0",
+    "maplibre-gl": "^5.24.0",
     "next": "16.1.1",
     "react": "19.2.3",
     "react-dom": "19.2.3"
